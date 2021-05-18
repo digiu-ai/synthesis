@@ -16,7 +16,6 @@ async function main() {
     const Portal = await ethers.getContractFactory("Portal");
     const portal = await Portal.deploy(bridgeAdrRinkeby, forwarderForPortal);
     console.log("Portal deployed to:", portal.address);
-
 }
 
 main()

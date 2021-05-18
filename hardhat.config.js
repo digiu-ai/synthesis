@@ -33,18 +33,6 @@ module.exports = {
   solidity: {
     compilers: [
       {
-        version: "0.6.9"
-      },
-      {
-        version: "0.7.0"
-      },
-      {
-        version: "0.5.16"
-      },
-      {
-        version: "0.6.10"
-      },
-      {
         version: "0.8.0",
         settings: {}
       }
@@ -54,12 +42,10 @@ module.exports = {
     rinkeby: {
       url: `https://eth-rinkeby.alchemyapi.io/v2/${ALCHEMY_API_KEY}`,
       accounts: [`${RINKEBY_PRIVATE_KEY}`],
-      gas: 300000
     },
     bsct: {
       url: `https://data-seed-prebsc-2-s3.binance.org:8545`,
       accounts: [`${RINKEBY_PRIVATE_KEY}`],
-      gas: 300000
     },
 
   },

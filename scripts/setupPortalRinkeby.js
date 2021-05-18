@@ -1,4 +1,5 @@
 const hre = require("hardhat");
+//const ethers = require("ethers")
 
 async function main() {
 
@@ -24,7 +25,7 @@ async function main() {
     const synt = await Synt.attach(synthesisAdr);
     console.log("Synthesize attached to ", synt.address)
 
-    await portal.setSynthesis(synthesisAdr)
+    await portal.connect(deployer).setSynthesis(synthesisAdr)
 
 }
 
