@@ -29,6 +29,6 @@ contract SyntERC20 is  Ownable, ERC20Permit {
         _burn(account, amount);
     }
 
-    constructor (string memory name_, string memory symbol_) ERC20Permit("SimbiozisGSN") ERC20(name_,symbol_)  {}
+    constructor (string memory name_, string memory symbol_) ERC20Permit("SymbiosisGSN") ERC20(name_,symbol_)  {}
 
 }

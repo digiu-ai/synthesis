@@ -4,8 +4,8 @@ async function main() {
     const realALP888 = "0x8aAFC440A5057cF8728c1C23fd74C25314c156ac"
 
     // set after deploy
-    const portalAdr = "0x6F15a295135a4D7A2e9434814333b8fE36EF3BF2"
-    const synthesisAdr = "0xEB2715D1defEffBb8696c4E653C4342bAf9cBb3a" // todo set real synthesis
+    const portalAdr = "0xe82B2332509B7433320408816Bc171F7a4d4bDb7"
+    const synthesisAdr = "0x1ED347EDd5560c90fc079719B294e3034F39fB76" // todo set real synthesis
 
     console.log(
         "Setup contracts with the account:",

@@ -4,7 +4,7 @@ async function main() {
 
     const [deployer] = await ethers.getSigners();
     const bridgeAdrBSCT = "0xBE165370D596e5d6a85AD9F1EbaC709Ee0aaf41C"
-    const forwarderForSynthesis = "0x58f24A413F6fb98f217600703C7086EA22B49C47" // it is real openGSN trustedForwarder
+    const forwarderForSynthesis = "0xeB230bF62267E94e657b5cbE74bdcea78EB3a5AB" // it is real openGSN trustedForwarder
 
 
     console.log(

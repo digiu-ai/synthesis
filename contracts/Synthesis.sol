@@ -48,7 +48,7 @@ contract Synthesis is RelayRecipient {
     function mintSyntheticToken(bytes32 _txID, address _tokenReal, uint256 _amount, address _to) onlyBridge external {
        // todo add chek to Default - чтобы не было по бриджу
         require(synthesizeStates[_txID] == SynthesizeState.Default, "Synt: emergencyUnsynthesizedRequest called or tokens has been already synthesized");
-        ISyntERC20(representationSynt[_tokenReal]).mintWithAllowance(_to,address(this), _amount);
+        ISyntERC20(representationSynt[_tokenReal]).mint(_to, _amount);
         synthesizeStates[_txID] = SynthesizeState.Synthesized;
         emit SynthesizeCompleted(_txID, _to, _amount, _tokenReal);
     }
@@ -67,7 +67,7 @@ contract Synthesis is RelayRecipient {
 
     // sToken -> Token on a second chain
     function burnSyntheticToken(address _stoken, uint256 _amount, address _chain2address) external returns (bytes32 txID) {
-        ISyntERC20(_stoken).burnWithAllowanceDecrease(_msgSender(), address(this), _amount);
+        ISyntERC20(_stoken).burn(_msgSender(), _amount);
         txID = keccak256(abi.encodePacked(this, requestCount));
 
         bytes memory out  = abi.encodeWithSelector(bytes4(keccak256(bytes('unsynthesize(bytes32,address,uint256,address)'))),txID, representationReal[_stoken], _amount, _chain2address);
@@ -90,7 +90,7 @@ contract Synthesis is RelayRecipient {
         TxState storage txState = requests[_txID];
         require(txState.state ==  RequestState.Sent, 'Synt: state not open or tx does not exist');
         txState.state = RequestState.Reverted; // close
-        ISyntERC20(txState.stoken).mintWithAllowance(txState.recipient, address(this), txState.amount);
+        ISyntERC20(txState.stoken).mint(txState.recipient, txState.amount);
 
         emit RevertBurnCompleted(_txID, txState.recipient, txState.amount, txState.stoken);
     }
