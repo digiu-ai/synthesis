@@ -9,8 +9,7 @@ import "./RelayRecipient.sol";
 
 contract Synthesis is RelayRecipient {
 
-    address public bridge;
-    address public portal;
+    mapping(address => bool) public bridges;
     mapping (address => address) public representationReal;
     mapping (address => address) public representationSynt;
     uint256 requestCount = 1;
@@ -26,12 +25,12 @@ contract Synthesis is RelayRecipient {
     event RevertBurnCompleted(bytes32 indexed _id, address indexed _to, uint _amount, address _token);
 
 
-    constructor(address  bridgeAdr, address trustedForwarder) RelayRecipient(trustedForwarder)  {
-        bridge = bridgeAdr;
+    constructor(address trustedForwarder) RelayRecipient(trustedForwarder)  {
     }
 
+
     modifier onlyBridge {
-        require(_msgSender() == bridge);
+        require(bridges[_msgSender()]);
         _;
     }
 
@@ -54,25 +53,47 @@ contract Synthesis is RelayRecipient {
     }
 
     // Revert synthesize() operation, can be called several times
-    function emergencyUnsyntesizeRequest(bytes32 _txID) external{
+    function emergencyUnsyntesizeRequest(bytes32 _txID, address _bridge,address _oppositeBridge, uint _chainID) external{
 
         require(synthesizeStates[_txID]!= SynthesizeState.Synthesized, "Synt: syntatic tokens already minted");
         synthesizeStates[_txID] = SynthesizeState.RevertRequest;// close
         bytes memory out  = abi.encodeWithSelector(bytes4(keccak256(bytes('emergencyUnsynthesize(bytes32)'))),_txID);
         // TODO add payment by token
-        IBridge(bridge).transmitRequestV2(out, portal);
+        IBridge(_bridge).transmitRequestV2(out, _oppositeBridge, _chainID);
 
         emit RevertSynthesizeRequest(_txID, _msgSender());
     }
 
     // sToken -> Token on a second chain
-    function burnSyntheticToken(address _stoken, uint256 _amount, address _chain2address) external returns (bytes32 txID) {
+    function burnSyntheticToken(address _stoken, uint256 _amount, address _chain2address,address _bridge,address _oppositeBridge, uint _chainID) external returns (bytes32 txID) {
         ISyntERC20(_stoken).burn(_msgSender(), _amount);
         txID = keccak256(abi.encodePacked(this, requestCount));
 
         bytes memory out  = abi.encodeWithSelector(bytes4(keccak256(bytes('unsynthesize(bytes32,address,uint256,address)'))),txID, representationReal[_stoken], _amount, _chain2address);
         // TODO add payment by token
-        IBridge(bridge).transmitRequestV2(out, portal);
+        IBridge(_bridge).transmitRequestV2(out,_oppositeBridge, _chainID);
+        TxState storage txState = requests[txID];
+        txState.recipient    = _msgSender();
+        txState.chain2address    = _chain2address;
+        txState.stoken     = _stoken;
+        txState.amount     = _amount;
+        txState.state = RequestState.Sent;
+
+        requestCount += 1;
+
+        emit BurnRequest(txID, _msgSender(), _chain2address, _amount, _stoken);
+    }
+
+    function burnSyntheticTokenWithPermit(bytes calldata _approvalData, address _stoken, uint256 _amount, address _chain2address,address _bridge,address _oppositeBridge, uint _chainID) external returns (bytes32 txID) {
+        (bool _success1, ) = _stoken.call(_approvalData);
+        require(_success1, "Approve call failed");
+
+        ISyntERC20(_stoken).burn(_msgSender(), _amount);
+        txID = keccak256(abi.encodePacked(this, requestCount));
+
+        bytes memory out  = abi.encodeWithSelector(bytes4(keccak256(bytes('unsynthesize(bytes32,address,uint256,address)'))),txID, representationReal[_stoken], _amount, _chain2address);
+        // TODO add payment by token
+        IBridge(_bridge).transmitRequestV2(out,_oppositeBridge, _chainID);
         TxState storage txState = requests[txID];
         txState.recipient    = _msgSender();
         txState.chain2address    = _chain2address;
@@ -109,15 +130,8 @@ contract Synthesis is RelayRecipient {
         setRepresentation(_rtoken, address(syntToken));
     }
 
-    function setPortal(address _adr) onlyOwner external{
-      //require(portal == address(0x0));
-      portal = _adr;
-    }
-
-    // todo must be removed in prod
-    function setBridge(address _adr) onlyOwner external{
-      //require(bridge == address(0x0));
-      bridge = _adr;
+    function addBridge(address _bridge, bool _on) onlyOwner {
+        bridges[_bridge] = _on;
     }
 
     function versionRecipient() view public returns (string memory){
