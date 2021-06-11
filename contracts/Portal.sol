@@ -122,7 +122,7 @@ contract Portal is RelayRecipient {
         emit RevertBurnRequest(_txID, _msgSender());
     }
 
-    function addBridge(address _bridge, bool _on) onlyOwner {
+    function addBridge(address _bridge, bool _on) onlyOwner external{
         bridges[_bridge] = _on;
     }
 

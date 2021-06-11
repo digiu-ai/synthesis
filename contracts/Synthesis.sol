@@ -130,7 +130,7 @@ contract Synthesis is RelayRecipient {
         setRepresentation(_rtoken, address(syntToken));
     }
 
-    function addBridge(address _bridge, bool _on) onlyOwner {
+    function addBridge(address _bridge, bool _on) onlyOwner external {
         bridges[_bridge] = _on;
     }
 
