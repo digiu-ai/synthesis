@@ -47,6 +47,10 @@ module.exports = {
       url: `https://data-seed-prebsc-2-s3.binance.org:8545`,
       accounts: [`${RINKEBY_PRIVATE_KEY}`],
     },
+    hsct: {
+      url: `https://http-testnet.hoosmartchain.com`,
+      accounts: [`${RINKEBY_PRIVATE_KEY}`],
+    },
 
   },
   etherscan: {

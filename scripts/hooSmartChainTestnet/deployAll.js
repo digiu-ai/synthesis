@@ -5,6 +5,7 @@ const { timeout } = require("../../utils/utils");
 async function main() {
 
     const [deployer] = await ethers.getSigners();
+    // todo set to hoo chain  real forwarder
     const forwarderRinkeby= "0x83A54884bE4657706785D7309cf46B58FE5f6e8a" // it is real openGSN trustedForwarder
 
     console.log(
@@ -35,29 +36,6 @@ async function main() {
     // only snt's can transmit requests
     await bridge.updateDexBind(portal.address, true)
     await bridge.updateDexBind(synthesis.address, true)
-
-    await timeout(100000);
-    await hre.run("verify:verify", {
-        address: bridge.address,
-        constructorArguments: [
-            forwarderRinkeby,
-        ],
-    })
-
-    await hre.run("verify:verify", {
-        address: portal.address,
-        constructorArguments: [
-            bridge.address,
-            forwarderRinkeby,
-        ],
-    })
-    await hre.run("verify:verify", {
-        address: synthesis.address,
-        constructorArguments: [
-            bridge.address,
-            forwarderRinkeby,
-        ],
-    })
 
 }
 
