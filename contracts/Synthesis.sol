@@ -25,7 +25,8 @@ contract Synthesis is RelayRecipient {
     event RevertBurnCompleted(bytes32 indexed _id, address indexed _to, uint _amount, address _token);
 
 
-    constructor(address trustedForwarder) RelayRecipient(trustedForwarder)  {
+    constructor(address _bridge, address _trustedForwarder) RelayRecipient(_trustedForwarder) {
+        bridge = _bridge;
     }
 
 
@@ -130,8 +131,9 @@ contract Synthesis is RelayRecipient {
         setRepresentation(_rtoken, address(syntToken));
     }
 
-    function addBridge(address _bridge, bool _on) onlyOwner external {
-        bridges[_bridge] = _on;
+    // should be restricted in mainnets
+    function changeBridge(address _bridge) onlyOwner external{
+        bridge = _bridge;
     }
 
     function versionRecipient() view public returns (string memory){

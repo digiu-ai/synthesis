@@ -12,7 +12,6 @@ async function main() {
     await hre.run("verify:verify", {
         address: portal,
         constructorArguments: [
-            bridgeAdrRinkeby,
             forwarderForPortal,
         ],
     })

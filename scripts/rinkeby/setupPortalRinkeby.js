@@ -1,6 +1,6 @@
 const hre = require("hardhat");
 //const ethers = require("ethers")
-
+// legacy
 async function main() {
 
     const [deployer] = await ethers.getSigners();

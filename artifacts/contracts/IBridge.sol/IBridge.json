@@ -12,6 +12,11 @@
         },
         {
           "internalType": "address",
+          "name": "receiveSide",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
           "name": "oppositeBridge",
           "type": "address"
         },
