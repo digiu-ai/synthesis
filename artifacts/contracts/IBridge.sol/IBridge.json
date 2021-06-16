@@ -12,8 +12,13 @@
         },
         {
           "internalType": "address",
-          "name": "spender",
+          "name": "oppositeBridge",
           "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "chainID",
+          "type": "uint256"
         }
       ],
       "name": "transmitRequestV2",
