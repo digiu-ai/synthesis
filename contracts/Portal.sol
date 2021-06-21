@@ -5,9 +5,11 @@ import "./IBridge.sol";
 import '@uniswap/lib/contracts/libraries/TransferHelper.sol';
 import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import "./RelayRecipient.sol";
+import "./utils/Pausable.sol";
 
 
-contract Portal is RelayRecipient {
+
+contract Portal is RelayRecipient, Pausable {
     using SafeMath for uint256;
 
     mapping(address => uint) public balanceOf;
@@ -44,7 +46,7 @@ contract Portal is RelayRecipient {
     }
 
     // Token -> sToken on a second chain
-    function synthesize(address _token, uint256 _amount, address _chain2address, address _receiveSide, address _oppositeBridge, uint _chainID)  external returns (bytes32 txID) {
+    function synthesize(address _token, uint256 _amount, address _chain2address, address _receiveSide, address _oppositeBridge, uint _chainID) whenNotPaused external returns (bytes32 txID) {
         TransferHelper.safeTransferFrom(_token, _msgSender(), address(this), _amount);
         balanceOf[_token] = balanceOf[_token].add(_amount);
 
@@ -65,7 +67,7 @@ contract Portal is RelayRecipient {
     }
 
     // Token -> sToken on a second chain withPermit
-    function synthesizeWithPermit(bytes calldata _approvalData, address _token, uint256 _amount, address _chain2address ,address _receiveSide, address _oppositeBridge, uint _chainID)  external returns (bytes32 txID) {
+    function synthesizeWithPermit(bytes calldata _approvalData, address _token, uint256 _amount, address _chain2address, address _receiveSide, address _oppositeBridge, uint _chainID) whenNotPaused external returns (bytes32 txID) {
 
         (bool _success1, ) = _token.call(_approvalData);
         require(_success1, "Approve call failed");
@@ -90,7 +92,7 @@ contract Portal is RelayRecipient {
     }
 
     // can called only by bridge after initiation on a second chain
-    function emergencyUnsynthesize(bytes32 _txID) onlyBridge external{
+    function emergencyUnsynthesize(bytes32 _txID) onlyBridge whenNotPaused external{
         TxState storage txState = requests[_txID];
         require(txState.state == RequestState.Sent , 'Portal:state not open or tx does not exist');
         txState.state = RequestState.Reverted; // close
@@ -101,7 +103,7 @@ contract Portal is RelayRecipient {
     }
 
     // can called only by bridge after initiation on a second chain
-    function unsynthesize(bytes32 _txID, address _token, uint256 _amount, address _to) onlyBridge external{
+    function unsynthesize(bytes32 _txID, address _token, uint256 _amount, address _to) onlyBridge whenNotPaused external{
         require(unsynthesizeStates[_txID] == UnsynthesizeState.Default, "Portal: syntatic tokens emergencyUnburn");
 
         TransferHelper.safeTransfer(_token, _to, _amount);
@@ -112,7 +114,7 @@ contract Portal is RelayRecipient {
     }
 
     // Revert burnSyntheticToken() operation, can be called several times
-    function emergencyUnburnRequest(bytes32 _txID, address _receiveSide, address _oppositeBridge, uint _chainId) external {
+    function emergencyUnburnRequest(bytes32 _txID, address _receiveSide, address _oppositeBridge, uint _chainId) whenNotPaused external {
         require(unsynthesizeStates[_txID] != UnsynthesizeState.Unsynthesized, "Portal: Real tokens already transfered");
         unsynthesizeStates[_txID] = UnsynthesizeState.RevertRequest;
 
@@ -126,6 +128,14 @@ contract Portal is RelayRecipient {
     // should be restricted in mainnets
     function changeBridge(address _bridge) onlyOwner external{
         bridge = _bridge;
+    }
+
+    function pause() onlyOwner external{
+        _pause();
+    }
+
+    function unpause() onlyOwner external{
+        _unpause();
     }
 
     function versionRecipient() view  public returns (string memory){
