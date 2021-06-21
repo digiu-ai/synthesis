@@ -23,7 +23,7 @@ async function main() {
 
 
     // SYNTHESIS
-    const Synthesis = await ethers.getContractFactory("Portal");
+    const Synthesis = await ethers.getContractFactory("Synthesis");
     const synthesis = await Synthesis.deploy(bridge.address, forwarderRinkeby);
     console.log("Synthesis deployed to:", synthesis.address);
 
