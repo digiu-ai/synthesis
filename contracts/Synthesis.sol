@@ -1,18 +1,18 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import "./IBridge.sol";
 import "./ISyntERC20.sol";
 import "./SyntERC20.sol";
 import "./RelayRecipient.sol";
 import "./utils/Pausable.sol";
 
-contract Synthesis is RelayRecipient, Pausable {
+contract Synthesis is RelayRecipient {
 
     mapping(address => address) public representationReal;
     mapping(bytes32 => address) public representationSynt;
-    uint256 requestCount = 1;
+    uint256 requestCount;
+    bool public paused;
     mapping(bytes32 => TxState) public requests;
     mapping(bytes32 => SynthesizeState) public synthesizeStates;
     address public bridge;
@@ -26,7 +26,14 @@ contract Synthesis is RelayRecipient, Pausable {
     event RevertBurnCompleted(bytes32 indexed _id, address indexed _to, uint _amount, address _token);
 
 
-    constructor(address _bridge, address _trustedForwarder) RelayRecipient(_trustedForwarder) {
+    /**
+     * init
+     */
+
+    function initialize(
+        address _bridge, address _trustedForwarder
+    ) public virtual initializer {
+        __RelayRecipient_init(_trustedForwarder);
         bridge = _bridge;
     }
 
@@ -87,28 +94,6 @@ contract Synthesis is RelayRecipient, Pausable {
         emit BurnRequest(txID, _msgSender(), _chain2address, _amount, _stoken);
     }
 
-    function burnSyntheticTokenWithPermit(bytes calldata _approvalData, address _stoken, uint256 _amount, address _chain2address, address _receiveSide, address _oppositeBridge, uint _chainID) external whenNotPaused returns (bytes32 txID) {
-        (bool _success1,) = _stoken.call(_approvalData);
-        require(_success1, "Approve call failed");
-
-        ISyntERC20(_stoken).burn(_msgSender(), _amount);
-        txID = keccak256(abi.encodePacked(this, requestCount));
-
-        bytes memory out = abi.encodeWithSelector(bytes4(keccak256(bytes('unsynthesize(bytes32,address,uint256,address)'))), txID, representationReal[_stoken], _amount, _chain2address);
-        // TODO add payment by token
-        IBridge(bridge).transmitRequestV2(out, _receiveSide, _oppositeBridge, _chainID);
-        TxState storage txState = requests[txID];
-        txState.recipient = _msgSender();
-        txState.chain2address = _chain2address;
-        txState.stoken = _stoken;
-        txState.amount = _amount;
-        txState.state = RequestState.Sent;
-
-        requestCount += 1;
-
-        emit BurnRequest(txID, _msgSender(), _chain2address, _amount, _stoken);
-    }
-
     // can called only by bridge after initiation on a second chain
     function emergencyUnburn(bytes32 _txID) onlyBridge whenNotPaused external {
         TxState storage txState = requests[_txID];
@@ -140,14 +125,18 @@ contract Synthesis is RelayRecipient, Pausable {
     }
 
     function pause() onlyOwner external{
-        _pause();
+        paused = true;
     }
 
     function unpause() onlyOwner external{
-        _unpause();
+        paused = false;
     }
 
     function versionRecipient() view public returns (string memory){
         return "2.0.1";
+    }
+    modifier whenNotPaused() {
+        require(!paused);
+        _;
     }
 }

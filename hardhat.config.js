@@ -1,5 +1,8 @@
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");
+require('@openzeppelin/hardhat-upgrades');
+require('hardhat-contract-sizer');
+
 
 
 require('dotenv').config();
@@ -16,11 +19,11 @@ const BSC_PRIVATE_KEY = process.env.BSC_PRIVATE_KEY || "";
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
 task("accounts", "Prints the list of accounts", async () => {
-  const accounts = await ethers.getSigners();
+    const accounts = await ethers.getSigners();
 
-  for (const account of accounts) {
-    console.log(account.address);
-  }
+    for (const account of accounts) {
+        console.log(account.address);
+    }
 });
 
 // You need to export an object to set up your config
@@ -30,41 +33,46 @@ task("accounts", "Prints the list of accounts", async () => {
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-  solidity: {
-    compilers: [
-      {
-        version: "0.8.0",
-        settings: {}
-      }
-    ]
-  },
-  networks: {
-    rinkeby: {
-      url: `https://eth-rinkeby.alchemyapi.io/v2/${ALCHEMY_API_KEY}`,
-      accounts: [`${RINKEBY_PRIVATE_KEY}`],
+    solidity: {
+        compilers: [
+            {
+                version: "0.8.0",
+                settings: {}
+            }
+        ]
     },
-    bsct: {
-      url: `https://data-seed-prebsc-2-s3.binance.org:8545`,
-      accounts: [`${RINKEBY_PRIVATE_KEY}`],
-    },
-    hsct: {
-      url: `https://http-testnet.hoosmartchain.com`,
-      accounts: [`${RINKEBY_PRIVATE_KEY}`],
-    },
+    networks: {
+        rinkeby: {
+            url: `https://eth-rinkeby.alchemyapi.io/v2/${ALCHEMY_API_KEY}`,
+            accounts: [`${RINKEBY_PRIVATE_KEY}`],
+        },
+        bsct: {
+            url: `https://data-seed-prebsc-2-s3.binance.org:8545`,
+            accounts: [`${RINKEBY_PRIVATE_KEY}`],
+        },
+        hsct: {
+            url: `https://http-testnet.hoosmartchain.com`,
+            accounts: [`${RINKEBY_PRIVATE_KEY}`],
+        },
 
-  },
-  etherscan: {
-    // Your API key for Etherscan
-    // Obtain one at https://etherscan.io/
-    apiKey: ETHERSCAN_API_KEY
-    //apiKey: BSCSCAN_API_KEY
+    },
+    etherscan: {
+        // Your API key for Etherscan
+        // Obtain one at https://etherscan.io/
+        apiKey: ETHERSCAN_API_KEY
+        //apiKey: BSCSCAN_API_KEY
 
-  },
-  bscscan: {
-    // Your API key for Etherscan
-    // Obtain one at https://etherscan.io/
-    apiKey: BSCSCAN_API_KEY
-  }
+    },
+    bscscan: {
+        // Your API key for Etherscan
+        // Obtain one at https://etherscan.io/
+        apiKey: BSCSCAN_API_KEY
+    },
+    contractSizer: {
+        alphaSort: true,
+        runOnCompile: true,
+        disambiguatePaths: false,
+    }
 
 };
 

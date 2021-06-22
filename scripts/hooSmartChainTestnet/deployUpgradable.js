@@ -1,4 +1,5 @@
- const { timeout } = require("../../utils/utils");
+const { timeout } = require("../../utils/utils");
+const { ethers, upgrades } = require("hardhat");
 
 
 async function main() {
@@ -22,41 +23,18 @@ async function main() {
 
     // SYNTHESIS
     const Synthesis = await ethers.getContractFactory("Synthesis");
-    const synthesis = await Synthesis.deploy(bridge.address, forwarderRinkeby);
+    const synthesis = await upgrades.deployProxy(Synthesis, [bridge.address, forwarderRinkeby]);
     console.log("Synthesis deployed to:", synthesis.address);
 
 
     const Portal = await ethers.getContractFactory("Portal");
-    const portal = await Portal.deploy(bridge.address, forwarderRinkeby);
+    const portal = await upgrades.deployProxy(Portal, [bridge.address, forwarderRinkeby]);
     console.log("Portal deployed to:", portal.address);
 
 
     // only snt's can transmit requests
     await bridge.updateDexBind(portal.address, true)
     await bridge.updateDexBind(synthesis.address, true)
-
-    await timeout(100000);
-    await hre.run("verify:verify", {
-        address: bridge.address,
-        constructorArguments: [
-            forwarderRinkeby,
-        ],
-    })
-
-    await hre.run("verify:verify", {
-        address: portal.address,
-        constructorArguments: [
-            bridge.address,
-            forwarderRinkeby,
-        ],
-    })
-    await hre.run("verify:verify", {
-        address: synthesis.address,
-        constructorArguments: [
-            bridge.address,
-            forwarderRinkeby,
-        ],
-    })
 
 }
 

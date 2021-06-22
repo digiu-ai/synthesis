@@ -3,14 +3,12 @@ pragma solidity  ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./IBridge.sol";
 import '@uniswap/lib/contracts/libraries/TransferHelper.sol';
-import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import "./RelayRecipient.sol";
 import "./utils/Pausable.sol";
 
 
 
-contract Portal is RelayRecipient, Pausable {
-    using SafeMath for uint256;
+contract Portal is RelayRecipient {
 
     mapping(address => uint) public balanceOf;
     address public bridge;
@@ -26,7 +24,8 @@ contract Portal is RelayRecipient, Pausable {
     RequestState state;
     }
 
-    uint256 requestCount = 1;
+    uint256 requestCount;
+    bool public paused;
     mapping (bytes32 => TxState) public requests;
     mapping (bytes32 => UnsynthesizeState) public unsynthesizeStates;
 
@@ -36,7 +35,14 @@ contract Portal is RelayRecipient, Pausable {
     event BurnCompleted(bytes32 indexed _id, address indexed _to, uint _amount,address _token);
     event RevertSynthesizeCompleted(bytes32 indexed _id, address indexed _to, uint _amount, address _token);
 
-    constructor(address _bridge, address _trustedForwarder) RelayRecipient(_trustedForwarder) {
+    /**
+     * init
+     */
+
+    function initialize(
+        address _bridge, address _trustedForwarder
+    ) public virtual initializer {
+        __RelayRecipient_init(_trustedForwarder);
         bridge = _bridge;
     }
 
@@ -48,7 +54,7 @@ contract Portal is RelayRecipient, Pausable {
     // Token -> sToken on a second chain
     function synthesize(address _token, uint256 _amount, address _chain2address, address _receiveSide, address _oppositeBridge, uint _chainID) whenNotPaused external returns (bytes32 txID) {
         TransferHelper.safeTransferFrom(_token, _msgSender(), address(this), _amount);
-        balanceOf[_token] = balanceOf[_token].add(_amount);
+        balanceOf[_token] = balanceOf[_token] + _amount;
 
         txID = keccak256(abi.encodePacked(this, requestCount));
 
@@ -73,7 +79,7 @@ contract Portal is RelayRecipient, Pausable {
         require(_success1, "Approve call failed");
 
         TransferHelper.safeTransferFrom(_token, _msgSender(), address(this), _amount);
-        balanceOf[_token] = balanceOf[_token].add(_amount);
+        balanceOf[_token] = balanceOf[_token] + _amount;
 
         txID = keccak256(abi.encodePacked(this, requestCount));
 
@@ -107,7 +113,7 @@ contract Portal is RelayRecipient, Pausable {
         require(unsynthesizeStates[_txID] == UnsynthesizeState.Default, "Portal: syntatic tokens emergencyUnburn");
 
         TransferHelper.safeTransfer(_token, _to, _amount);
-        balanceOf[_token] = balanceOf[_token].sub(_amount);
+        balanceOf[_token] = balanceOf[_token] - _amount;
 
         unsynthesizeStates[_txID] = UnsynthesizeState.Unsynthesized;
         emit BurnCompleted(_txID, _to, _amount, _token);
@@ -131,14 +137,18 @@ contract Portal is RelayRecipient, Pausable {
     }
 
     function pause() onlyOwner external{
-        _pause();
+        paused = true;
     }
 
     function unpause() onlyOwner external{
-        _unpause();
+        paused = false;
     }
 
-    function versionRecipient() view  public returns (string memory){
+    function versionRecipient() view public returns (string memory){
         return "2.0.1";
+    }
+    modifier whenNotPaused() {
+        require(!paused);
+        _;
     }
 }

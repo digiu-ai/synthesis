@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
 /**
  * @dev Contract module which allows children to implement an emergency stop
  * mechanism that can be triggered by an authorized account.
@@ -11,7 +13,7 @@ pragma solidity ^0.8.0;
  * the functions of your contract. Note that they will not be pausable by
  * simply including this module, only once the modifiers are put in place.
  */
-abstract contract Pausable {
+abstract contract Pausable is Initializable {
     /**
      * @dev Emitted when the pause is triggered by `account`.
      */
@@ -27,7 +29,7 @@ abstract contract Pausable {
     /**
      * @dev Initializes the contract in unpaused state.
      */
-    constructor () {
+    function __Pausable_init() internal initializer {
         _paused = false;
     }
 
