@@ -14,6 +14,7 @@ const MAINNET_PRIVATE_KEY = process.env.MAINNET_PRIVATE_KEY || "";
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
 const BSCSCAN_API_KEY = process.env.BSCSCAN_API_KEY || "";
 const BSC_PRIVATE_KEY = process.env.BSC_PRIVATE_KEY || "";
+const MUMBAI_MATIC_API_RPC  = process.env.MUMBAI_MATIC_API_RPC || "";
 
 
 // This is a sample Hardhat task. To learn how to create your own go to
@@ -54,13 +55,17 @@ module.exports = {
             url: `https://http-testnet.hoosmartchain.com`,
             accounts: [`${RINKEBY_PRIVATE_KEY}`],
         },
+        mumbai: {
+            url: `https://rpc-mumbai.maticvigil.com/v1/${MUMBAI_MATIC_API_RPC}`,
+            accounts: [`${RINKEBY_PRIVATE_KEY}`],
+        },
 
     },
     etherscan: {
         // Your API key for Etherscan
         // Obtain one at https://etherscan.io/
-        apiKey: ETHERSCAN_API_KEY
-        //apiKey: BSCSCAN_API_KEY
+        //apiKey: ETHERSCAN_API_KEY
+        apiKey: BSCSCAN_API_KEY
 
     },
     bscscan: {
