@@ -58,7 +58,7 @@ contract Portal is RelayRecipient {
 
         txID = keccak256(abi.encodePacked(this, requestCount));
 
-        bytes memory out  = abi.encodeWithSelector(bytes4(keccak256(bytes('mintSyntheticToken(bytes32,address,uint,uint256,address)'))), txID, _token, block.chainid, _amount, _chain2address);
+        bytes memory out  = abi.encodeWithSelector(bytes4(keccak256(bytes('mintSyntheticToken(bytes32,address,uint256,uint256,address)'))), txID, _token, block.chainid, _amount, _chain2address);
         // TODO add payment by token
         IBridge(bridge).transmitRequestV2(out,_receiveSide, _oppositeBridge, _chainID);
         TxState storage txState = requests[txID];
@@ -83,7 +83,7 @@ contract Portal is RelayRecipient {
 
         txID = keccak256(abi.encodePacked(this, requestCount));
 
-        bytes memory out  = abi.encodeWithSelector(bytes4(keccak256(bytes('mintSyntheticToken(bytes32,address,uint,uint256,address)'))), txID, _token, block.chainid, _amount, _chain2address);
+        bytes memory out  = abi.encodeWithSelector(bytes4(keccak256(bytes('mintSyntheticToken(bytes32,address,uint256,uint256,address)'))), txID, _token, block.chainid, _amount, _chain2address);
         // TODO add payment by token
         IBridge(bridge).transmitRequestV2(out,_receiveSide, _oppositeBridge, _chainID);
         TxState storage txState = requests[txID];
