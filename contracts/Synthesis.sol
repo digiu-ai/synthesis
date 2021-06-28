@@ -54,7 +54,6 @@ contract Synthesis is RelayRecipient {
 
     // can called only by bridge after initiation on a second chain
     function mintSyntheticToken(bytes32 _txID, address _tokenReal, uint _chainID, uint256 _amount, address _to) onlyBridge whenNotPaused external {
-        // todo add chek to Default - чтобы не было по бриджу
         require(synthesizeStates[_txID] == SynthesizeState.Default, "Synt: emergencyUnsynthesizedRequest called or tokens has been already synthesized");
         ISyntERC20(representationSynt[keccak256(abi.encodePacked(_tokenReal, _chainID))]).mint(_to, _amount);
         synthesizeStates[_txID] = SynthesizeState.Synthesized;
