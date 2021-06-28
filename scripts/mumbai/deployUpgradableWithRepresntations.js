@@ -11,7 +11,7 @@ async function main() {
     const realToken = "0x8aAFC440A5057cF8728c1C23fd74C25314c156ac"
 
     console.log(
-        "Deploying contracts with the account:",
+        "Deploying contracts on Mumbai with the account:",
         deployer.address
     );
 
