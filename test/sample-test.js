@@ -77,7 +77,7 @@ describe("Should check snts", function () {
 
     portalWithBridge = await upgrades.deployProxy(Portal, [bridge.address, forwarderRinkeby]);
     synthesisWithBridge = await upgrades.deployProxy(Synthesis, [bridge.address, forwarderRinkeby]);
-    console.log("Real Hardhat chain id is", portalWithBridge.getChainId())
+    console.log("Real Hardhat chain id is", await portalWithBridge.getChainId())
     await synthesisWithBridge.createRepresentation(testToken.address, hardhatChainID, "sTT", "sTT")
 
     let syntKey2 = ethers.utils.solidityKeccak256(["address", "uint"], [testToken.address, hardhatChainID] )
