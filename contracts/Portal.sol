@@ -16,6 +16,17 @@ contract Portal is RelayRecipient {
     enum RequestState { Default, Sent, Reverted}
     enum UnsynthesizeState { Default, Unsynthesized, RevertRequest}
 
+    // for tests
+    event OracleRequest(
+        string  requestType,
+        address bridge,
+        bytes32 requestId,
+        bytes   selector,
+        address receiveSide,
+        address oppositeBridge,
+        uint chainid
+    );
+
     struct TxState {
     address recipient;
     address chain2address;
@@ -51,6 +62,10 @@ contract Portal is RelayRecipient {
         _;
     }
 
+    function getChainId() external view returns (uint256) {
+        return block.chainid;
+    }
+
     // Token -> sToken on a second chain
     function synthesize(address _token, uint256 _amount, address _chain2address, address _receiveSide, address _oppositeBridge, uint _chainID) whenNotPaused external returns (bytes32 txID) {
         TransferHelper.safeTransferFrom(_token, _msgSender(), address(this), _amount);
@@ -70,6 +85,10 @@ contract Portal is RelayRecipient {
 
         requestCount +=1;
         emit SynthesizeRequest(txID, _msgSender(), _chain2address, _amount, _token);
+
+        // for tests
+        emit OracleRequest("setRequest", address(this), txID, out, _receiveSide, _oppositeBridge, _chainID);
+
     }
 
     // Token -> sToken on a second chain withPermit

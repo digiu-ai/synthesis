@@ -26,7 +26,7 @@ describe("Upgradable", function() {
 });
 
 describe("Should check snts", function () {
-  let portal, synthesis, testToken, sTestToken, sTestTokenAdr
+  let portal, synthesis, testToken, sTestToken, sTestTokenAdr, portalWithBridge ,bridge, synthesisWithBridge, sTestTokenBridging
   const forwarderRinkeby= "0x83A54884bE4657706785D7309cf46B58FE5f6e8a" // it is real openGSN trustedForwarder
   let owner, adr1
   const hardhatChainID = 31337
@@ -35,12 +35,12 @@ describe("Should check snts", function () {
   beforeEach( async () => {
     [owner, adr1] = await ethers.getSigners();
 
-    const bridge = owner.address
+    const bridgeAdr = owner.address
     const Portal = await ethers.getContractFactory("Portal");
-    portal = await upgrades.deployProxy(Portal, [bridge, forwarderRinkeby]);
+    portal = await upgrades.deployProxy(Portal, [bridgeAdr, forwarderRinkeby]);
 
     const Synthesis = await ethers.getContractFactory("Synthesis");
-    synthesis = await upgrades.deployProxy(Synthesis, [bridge, forwarderRinkeby]);
+    synthesis = await upgrades.deployProxy(Synthesis, [bridgeAdr, forwarderRinkeby]);
 
     const TestToken = await ethers.getContractFactory("SyntERC20");
     testToken = await TestToken.deploy("sTT", "sTTT");
@@ -50,8 +50,8 @@ describe("Should check snts", function () {
 
     await testToken.approve(portal.address, mintableAmount)
 
+    //const hardhatChainID = portal.getChainId()
 
-    console.log("Hardhat chain id is",hardhatChainID)
 
     await synthesis.createRepresentation(testToken.address, hardhatChainID, "sTT", "sTT")
 
@@ -62,9 +62,34 @@ describe("Should check snts", function () {
 
     const STestToken = await ethers.getContractFactory("SyntERC20");
     sTestToken = await STestToken.attach(sTestTokenAdr);
-    console.log("Synthesize attached to ", sTestToken.address)
+    console.log("sTestToken attached to ", sTestToken.address)
 
 
+
+    const ListNodeMock = await ethers.getContractFactory("NodeListMock");
+    const listNode = await ListNodeMock.deploy();
+    console.log("ListNodeMock deployed to:", listNode.address);
+
+
+    const Bridge = await ethers.getContractFactory("Bridge");
+     bridge = await Bridge.deploy(listNode.address);
+    console.log("Bridge deployed to:", bridge.address);
+
+    portalWithBridge = await upgrades.deployProxy(Portal, [bridge.address, forwarderRinkeby]);
+    synthesisWithBridge = await upgrades.deployProxy(Synthesis, [bridge.address, forwarderRinkeby]);
+    console.log("Real Hardhat chain id is", portalWithBridge.getChainId())
+    await synthesisWithBridge.createRepresentation(testToken.address, hardhatChainID, "sTT", "sTT")
+
+    let syntKey2 = ethers.utils.solidityKeccak256(["address", "uint"], [testToken.address, hardhatChainID] )
+    sTestTokenAdr = await synthesisWithBridge.representationSynt(syntKey2)
+    sTestTokenBridging =  await STestToken.attach(sTestTokenAdr);
+    console.log("sTestTokenBridging attached to ", sTestToken.address)
+
+
+    await bridge.updateDexBind(portalWithBridge.address, true)
+    await bridge.updateDexBind(synthesisWithBridge.address, true)
+
+    await testToken.approve(portalWithBridge.address, mintableAmount)
   });
 
   it("Should synt some sTT", async () => {
@@ -73,12 +98,34 @@ describe("Should check snts", function () {
     let bytes32Id = ethers.utils.formatBytes32String("some id 1234345235")
     let txSynt = await synthesis.mintSyntheticToken(bytes32Id, testToken.address, hardhatChainID, mintableAmount, adr1.address)
     let receipt1 = await txSynt.wait();
+    //console.log(receipt1)
+    let sTokenBalance = await  sTestToken.balanceOf(adr1.address)
+    console.log("supply of sTT for adr1 is %s", sTokenBalance)
+    expect(sTokenBalance).to.equal(mintableAmount);
+  });
+
+  it("Should sent portal req", async () => {
+
+
+
+    let oldBalance = await testToken.balanceOf(owner.address)
+    const syntAmount = constants.WeiPerEther.mul(10);
+    let txSynt = await portalWithBridge.synthesize(testToken.address,syntAmount, adr1.address, synthesisWithBridge.address, bridge.address, hardhatChainID)
+    let receipt1 = await txSynt.wait();
     console.log(receipt1)
-    let sTokenBallance = await  sTestToken.balanceOf(adr1.address)
-    console.log("supply of sTT for adr1 is %s", sTokenBallance)
-    expect(sTokenBallance).to.equal( mintableAmount);
+    let oracleRequest = receipt1.events.filter((x) => {
+      return x.event == "OracleRequest";
+    });
 
+    let reqID = oracleRequest[0].args[2];
+    let selector = oracleRequest[0].args[3];
+    let bytesSelector = ethers.utils.arrayify(selector);
+    let receiveSide = oracleRequest[0].args[4];
+    console.log("Oracle request: ", reqID, selector,receiveSide )
+    console.log("is bytes ", ethers.utils.isBytes(bytesSelector))
+    await bridge.receiveRequestV2(reqID, bytesSelector, synthesisWithBridge.address, bridge.address)
 
-
+    expect(oldBalance.sub(syntAmount)).to.equal(await testToken.balanceOf(owner.address));
+    expect(syntAmount).to.equal(await sTestTokenBridging.balanceOf(adr1.address));
   });
 });
