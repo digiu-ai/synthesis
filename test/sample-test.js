@@ -69,7 +69,7 @@ describe("Should check snts", function () {
 
   it("Should synt some sTT", async () => {
     console.log("supply of sTT for adr1 is %s", await sTestToken.balanceOf(adr1.address))
-    const mintableAmount = constants.WeiPerEther.mul(10); // 10%
+    const mintableAmount = constants.WeiPerEther.mul(10);
     let bytes32Id = ethers.utils.formatBytes32String("some id 1234345235")
     let txSynt = await synthesis.mintSyntheticToken(bytes32Id, testToken.address, hardhatChainID, mintableAmount, adr1.address)
     let receipt1 = await txSynt.wait();
