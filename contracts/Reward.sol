@@ -21,12 +21,25 @@ contract RelayerPool is Ownable {
     uint256 constant MIN_STAKING_TIME = 2 weeks;
 
     uint256 internal _nextDepositId;
-    mapping (uint256 => Deposit) public _deposits;
+    mapping (uint256 => Deposit) public _deposits;  // id -> deposit
     mapping (address => EnumerableSet.UintSet) internal _userDepositIds;
-    // todo total stake
+    mapping (address => uint256) _userTotalDeposit;
+    uint256 internal _totalDeposit;
+    uint256 internal _lastShareRewardTimestamp;
+    mapping (address => uint256) _userClaimed;
+    uint256 internal _rewardPerTokenNumerator;
+    uint256 constant REWARD_PER_TOKEN_DENOMINATOR = 10*18;
+
+//    constructor () {
+////        _lastShareRewardTimestamp = block.timestamp;  //
+//    }
+
+    function getTotalDeposit() external view returns(uint256){
+        return _totalDeposit;
+    }
 
     struct Deposit {
-        address user;
+        address user;  // todo optimization it's possible to exclude
         uint256 lockTill;  //todo optimization is possible uint40
         uint256 amount;
     }
@@ -51,17 +64,27 @@ contract RelayerPool is Ownable {
     ///   для стейкеров пула Relayer pool - две недели, максимальное время стейкинга неограничено.
     function withdraw(uint256 depositId, uint256 amount) external {
         Deposit storage deposit = _deposits[depositId];
-        require(amount > deposit.amount, Errors.INSUFFICIENT_DEPOSIT);
         require(deposit.user == msg.sender, Errors.NOT_DEPOSIT_OWNER);
+        require(amount <= deposit.amount, Errors.INSUFFICIENT_DEPOSIT);
         require(block.timestamp >= deposit.lockTill, Errors.DEPOSIT_IS_LOCKED);
         require(userDepositIds[msg.sender].contains(depositId), Errors.DATA_INCONSISTENCY);
-        if (deposit.amount > amount) {
+
+        harvest(msg.sender);  // ensure user collected reward
+        _userClaimed[msg.sender] -= amount * _rewardPerTokenNumerator / REWARD_PER_TOKEN_DENOMINATOR;
+
+        if (amount < deposit.amount) {
             deposit.amount -= amount;
             emit DepositWithdrawn(msg.sender, depositId, amount, deposit.amount);
         } else {  // deposit.amount == amount, because of require condition above (take care!)
             delete deposits[depositId];  // free up storage slot
             require(userDepositIds[msg.sender].remove(depositId), Errors.DATA_INCONSISTENCY);
             emit DepositWithdrawn(msg.sender, depositId, amount, 0);
+        }
+        _userTotalDeposit[msg.sender] -= amount;  // todo total deposit event
+        _totalDeposit -= amount;
+        if (isOwner()) {
+            require(_totalDeposit <= _userTotalDeposit[owner] * 6, "small owner stake (ownerStaker*6 >= totalStake)");  //todo err msg
+            require(_userTotalDeposit[owner] >= MIN_OWNER_COLLATERAL, "small owner stake (ownerStake >= MIN_OWNER_COLLATERAL)");
         }
         IERC20(_payableToken).safeTransfer(msg.sender, amount);
     }
@@ -81,18 +104,37 @@ contract RelayerPool is Ownable {
             lockTill: lockTill,
             amount: amount,
         });
+        _userTotalDeposit[msg.sender] += amount;
+        _totalDeposit += amount;
         IERC20(_payableToken).safeTransferFrom(msg.sender, address(this), amount);
-        uint256 ownerStake =
-        require(totalDeposit <= ownerStake*6);
+        if (!isOwner()) {
+            require(_totalDeposit <= _userTotalDeposit[owner]*6, "small owner stake (ownerStaker*6 >= totalStake)");
+        }
+        _userClaimed[msg.sender] += amount * _rewardPerTokenNumerator / REWARD_PER_TOKEN_DENOMINATOR;
     }
 
     /// @dev метод для сбора вознаграждений из смартконтракте Reward, доступен с адреса, который разместил средства,
     ///   на замороженные средства также действует период заморозки
     function harvest() external {
-
+        uint256 reward = (_rewardPerTokenNumerator * _userTotalDeposit[msg.sender] / REWARD_PER_TOKEN_DENOMINATOR
+            - _userClaimed[msg.sender]);
+        if (reward == 0) {
+            return;
+        }
+        IERC20(_payableToken).safeTransfer(msg.sender, reward);
+        _userClaimed[msg.sender] += reward;
+        emit RewardHarvest(msg.sender, reward);
     }
 
-    //todo Тогда дневная прибыль валидатора day profit составляет Day profit=Pool Stake*Emission rate/100/365
+    function shareReward() external {
+        uint256 unprocessedPeriod = block.timestamp - _lastShareRewardTimestamp;
+        _lastShareRewardTimestamp = block.timestamp;
+        uint256 reward = _totalDeposit * unprocessedPeriod * EMISSION_RATE / 100 / 365;  // todo discuss
+        IERC20(_payableToken).safeTransferFrom(msg.sender, address(this), reward);  // todo discuss front running
+        _rewardPerTokenNumerator += reward * REWARD_PER_TOKEN_DENOMINATOR / _totalDeposit;
+        // todo we can skip `_totalDeposit *`
+        emit RewardShared(msg.sender, reward);
+    }
 }
 
 contract RewardRegistry is Ownable {
@@ -126,10 +168,16 @@ contract Reward is Ownable {
     uint256 internal _relayerFeeNumerator;  /// @dev величина комиссии, которая взимается со стейкеров в пуле, задается владельцем узла
     uint256 const RELAYER_FEE_MIN_NUMERATOR = 200;
     uint256 const RELAYER_FEE_DENOMINATOR = 10000;
+    address public consensus;
 
     /// @note метод может быть вызван только владельцем адреса Relayer owner address,
     ///   это необходимо в случае переустановки ноды
     //todo use Ownable.transferOwnership
+
+    constructor(address _consensus) {
+         consensus = _consensus;
+    }
+
 
     /// @note метод может быть вызван только владельцем адреса Relayer owner address,
     ///   с целью изменения комиссии для стейкеров в его пуле Relayer pool contract address
@@ -145,9 +193,13 @@ contract Reward is Ownable {
         emit VersionSet(value);
     }
 
+    modifier onlyConsensus() {
+        require(msg.sender == consensus, "onlyConsensus");
+        _;
+    }
+
     /// @dev метод может быть вызван только нодой сети релееров, которая была выбрана большинством голосов (2/3), для того, чтобы обновить состояние записей в контракте
-    //todo какой тут модификатор вставить можно?
-    function setRelayerStatus(RelayerStatus value) external onlyElectedNode {
+    function setRelayerStatus(RelayerStatus value) external onlyConsensus {
         require(_relayerStatus != value, Errors.SAME_VALUE);
         _relayerStatus = value;
         emit RelayerStatusSet(value);
@@ -176,6 +228,13 @@ contract Reward is Ownable {
     function getRelayerFeeNumerator() external view returns(address) {
         return address(_relayerFeeNumerator);
     }
+
+    /// @notice Базой для расчёта начислений нужно считать, что мы закладываем фиксированный годовой процент
+    ///   эмиссии токена для релееров, обозначим его как Emission rate
+    ///   Обозначим суммарный стейк релеера в его пуле Relayer pool как Pool Stake=SUM Stakei i=0,..,n,
+    ///   где n - количество записей в контракте Relayer pool.
+    ///   Тогда дневная прибыль валидатора day profit составляет Day profit=Pool Stake*Emission rate/100/365
+    ///   Период начисления наград - один раз сутки.
 }
 
 // todo discuss
